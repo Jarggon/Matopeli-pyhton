@@ -19,7 +19,10 @@ Note: Because this is an indie game, Windows Defender might show a blue "Windows
 How to play (Mac)  
 Note: Requires Python 3 installed
 
-1. Download the matopeli.py file from this repository.
+1. Download the matopeli.py file
+  Click the green "<> Code" button near the top of the page.  
+  Select "Download ZIP".
+  Unzip the file on your computer to find matopeli.py
 
 2. Open Terminal (Command + Space, type "Terminal").
 
