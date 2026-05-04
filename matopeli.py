@@ -11,10 +11,16 @@ obstacle_amount = 10 #10 recommended. 200MAX
 ######################################################
 
 #pelin muuttujat
+try:
+    with open("matopelihighscore.txt", "r") as file:
+        highscore = int(file.read())
+except FileNotFoundError:
+    highscore = 0
 score = 0
-highscore = 0
 worm_speed = worm_start_speed
 tick_time = 0
+game_is_paused = False
+game_on = True
 
 #pelin ikkuna
 game_screen = turtle.Screen()
@@ -162,11 +168,11 @@ def spawn_all_obstacles():
     for _ in range(safe_amount):
         spawn_obstacle()
 
-#madon suunta
 def go_up():
     if head.direction != "down" and head.turn_lock == False:
         head.direction = "up"
         head.turn_lock = True
+
 def go_down():
     if head.direction != "up" and head.turn_lock == False:
         head.direction = "down"
@@ -182,32 +188,48 @@ def go_right():
         head.direction = "right"
         head.turn_lock = True
 
-#madon liike
+def toggle_pause():
+
+    global game_is_paused
+    game_is_paused = not game_is_paused
+
+def quit_game():
+    global game_on
+    game_on = False
+
 def move():
     
     if head.direction == "up":
         y = head.ycor()
         head.sety(y + 20)
-    
+        tick_timer()
+        
     if head.direction == "down":
         y = head.ycor()
         head.sety(y - 20)
+        tick_timer()
 
     if head.direction == "left":
         x = head.xcor()
         head.setx(x - 20)
-    
+        tick_timer()
+
     if head.direction == "right":
         x = head.xcor()
         head.setx(x + 20)
-
-    tick_timer()
+        tick_timer()
+    
+    head.turn_lock = False
 
 def update_scoreboard():
     global highscore
 
     if score > highscore:
         highscore = score
+
+        with open("matopelihighscore.txt", "w") as file:
+                  file.write(str(highscore))
+                  
     points.clear()
     points.write(f"SCORE: {score}      HIGHSCORE: {highscore}", font=("Courier New", 25, "normal"))
 
@@ -226,7 +248,6 @@ def worm_speed_increase():
     if worm_speed > worm_max_speed:
         worm_speed -= 0.0012
 
-#peli loppuu
 def game_over():
     global score, worm_speed, tick_time
 
@@ -260,94 +281,98 @@ game_screen.onkeypress(go_up, "Up")
 game_screen.onkeypress(go_down, "Down")
 game_screen.onkeypress(go_left, "Left")
 game_screen.onkeypress(go_right, "Right")
+game_screen.onkeypress(toggle_pause, "p")
+game_screen.onkeypress(quit_game, "Escape")
 
 spawn_all_obstacles()
 
 #pelin päivitys
-while True:
+while game_on:
     game_screen.update()
 
-    #madon vartalopalat seuraa niskapalaa
-    for i in range(len(worm_body_parts) - 1, 0, -1):
-        x = worm_body_parts[i - 1].xcor()
-        y = worm_body_parts[i - 1].ycor()
-        worm_body_parts[i].goto(x,y)
-        worm_body_parts[i].showturtle()
+    if not game_is_paused:
+        #madon vartalopalat seuraa niskapalaa
+        for i in range(len(worm_body_parts) - 1, 0, -1):
+            x = worm_body_parts[i - 1].xcor()
+            y = worm_body_parts[i - 1].ycor()
+            worm_body_parts[i].goto(x,y)
+            worm_body_parts[i].showturtle()
 
-    #madon niskapala seuraa päätä
-    if len(worm_body_parts) > 0:
-        x = head.xcor()
-        y = head.ycor()
-        worm_body_parts[0].goto(x,y)
-        worm_body_parts[0].showturtle()
+        #madon niskapala seuraa päätä
+        if len(worm_body_parts) > 0:
+            x = head.xcor()
+            y = head.ycor()
+            worm_body_parts[0].goto(x,y)
+            worm_body_parts[0].showturtle()
 
-    #mato liikkuu
-    move()
-    head.turn_lock = False
+        #mato liikkuu
+        move()
+
+        #osuit seinään
+        if head.xcor() > 290 or head.xcor() < -290 or head.ycor() > 290 or head.ycor() < -290:
+            game_over()
+
+        #osuit itseesi
+        for part in worm_body_parts:
+            if head.distance(part) < 20:
+                game_over()
+
+        #osuit esteeseen
+        for _ in obstacles:
+            if head.distance(_) < 20:
+                game_over()
+
+        #spawnataan kultainen omena
+        if tick_time % 100 == 0 and tick_time > 0 and score > 150:
+            spawn_golden_apple()
+
+        if tick_time % 50 == 0 and tick_time % 100 != 0:
+            despawn_golden_apple()
+
+        #jos söit kultaisen omenan
+        if head.distance(golden_apple) < 20:
+
+            #pisteen lisäys
+            score += 50
+            update_scoreboard()
+            despawn_golden_apple()
+
+            #madon nopeus kasvaa
+            worm_speed_increase()
+            add_new_body_part()
+
+        #jos söit ruokaa
+        if head.distance(food) < 20:
+
+            #madon nopeus kasvaa
+            worm_speed_increase()
+
+            #pisteen lisäys
+            score += 10
+            update_scoreboard()
+            
+            safe_food_place = False
+            while safe_food_place == False:
+
+                #vaihdetaan ruuan paikka
+                x = random.randint(-14, 14) * 20
+                y = random.randint(-14, 14) * 20
+                food.goto(x, y)
+                safe_food_place = True
+
+                #tarkistetaan ettei ruoka spawnaa madon tai kultaisen omenan sisään
+                for part in worm_body_parts:
+                    if food.distance(part) < 20:
+                        safe_food_place = False
+                if food.distance(head) < 20 or food.distance(golden_apple) < 20:
+                    safe_food_place = False
+
+                #tarkistetaan ettei ruoka spawnaa esteen sisään
+                for obs in obstacles:
+                    if food.distance(obs) < 20:
+                        safe_food_place = False
+            add_new_body_part()            
     time.sleep(worm_speed)
 
-    #osuit seinään
-    if head.xcor() > 290 or head.xcor() < -290 or head.ycor() > 290 or head.ycor() < -290:
-        game_over()
-
-    #osuit itseesi
-    for part in worm_body_parts:
-        if head.distance(part) < 20:
-            game_over()
-
-    #osuit esteeseen
-    for _ in obstacles:
-        if head.distance(_) < 20:
-            game_over()
-    
-    #spawnataan kultainen omena
-    if tick_time % 100 == 0 and tick_time > 0 and score > 150:
-        spawn_golden_apple()
-
-    if tick_time % 50 == 0 and tick_time % 100 != 0:
-        despawn_golden_apple()
-
-    #jos söit kultaisen omenan
-    if head.distance(golden_apple) < 20:
-
-        #pisteen lisäys
-        score += 50
-        update_scoreboard()
-        despawn_golden_apple()
-
-        #madon nopeus kasvaa
-        worm_speed_increase()
-        add_new_body_part()
-    
-    #jos söit ruokaa
-    if head.distance(food) < 20:
-
-        #madon nopeus kasvaa
-        worm_speed_increase()
-
-        #pisteen lisäys
-        score += 10
-        update_scoreboard()
-        
-        safe_food_place = False
-        while safe_food_place == False:
-
-            #vaihdetaan ruuan paikka
-            x = random.randint(-14, 14) * 20
-            y = random.randint(-14, 14) * 20
-            food.goto(x, y)
-            safe_food_place = True
-
-            #tarkistetaan ettei ruoka spawnaa madon tai kultaisen omenan sisään
-            for part in worm_body_parts:
-                if food.distance(part) < 20:
-                    safe_food_place = False
-            if food.distance(head) < 20 or food.distance(golden_apple) < 20:
-                safe_food_place = False
-
-            #tarkistetaan ettei ruoka spawnaa esteen sisään
-            for obs in obstacles:
-                if food.distance(obs) < 20:
-                    safe_food_place = False
-        add_new_body_part()            
-
+print("Game closing")
+turtle.bye()
