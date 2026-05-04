@@ -6,7 +6,7 @@ Classic worm game made with Python Turtle library.
 
 <img width="516" height="515" alt="Screenshot 2026-05-03 161739" src="https://github.com/user-attachments/assets/41daffd3-925b-47f1-ad75-8c5c443ed56c" />
 
-Use the Arrow Keys (Up, Down, Left, Right) to control the snake.  
+Use the Arrow Keys (Up, Down, Left, Right) to control the snake. Press (p) to toggle pause ON/OFF. (Esc) to quit game.  
 Avoid the grey walls, obstacles and your own tail!
 
 How to play (Windows)
